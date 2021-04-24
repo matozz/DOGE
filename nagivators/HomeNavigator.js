@@ -1,19 +1,21 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import {
   createStackNavigator,
   TransitionPresets,
 } from "@react-navigation/stack";
 import { BlurView } from "expo-blur";
-import RegisterUserScreen from "../screens/RegisterUserScreen";
-import LoginScreen from "../screens/LoginScreen";
+import AddChatScreen from "../screens/AddChatScreen";
+import TabNavigator from "./TabNavigator";
+import MyScreen from "../screens/MyScreen";
+import MyNavigator from "./MyNavigator";
 
-const AuthStack = createStackNavigator();
+const HomeStack = createStackNavigator();
 
-const AuthNavigator = () => {
+const HomeNavigator = () => {
   return (
-    <AuthStack.Navigator
-      initialRouteName={"Login"}
+    <HomeStack.Navigator
+      initialRouteName={"Home"}
       mode="modal"
       screenOptions={({ route }) => {
         return {
@@ -26,25 +28,22 @@ const AuthNavigator = () => {
         };
       }}
     >
-      <AuthStack.Screen
-        name="Login"
-        component={LoginScreen}
+      <HomeStack.Screen
+        name="Home"
+        component={TabNavigator}
         options={{ headerShown: false }}
       />
-      <AuthStack.Screen
-        name="Register"
-        component={RegisterUserScreen}
+      <HomeStack.Screen
+        name="AddChat"
+        component={AddChatScreen}
         options={{
           headerStatusBarHeight: 0,
           headerStyle: { height: 55 },
-          headerTitle: "",
-          headerTintColor: "black",
-          headerBackTitle: " ",
-          headerTransparent: true,
-          headerLeftContainerStyle: {
-            width: "20%",
-            // backgroundColor: "red",
+          headerTitleStyle: {
+            color: "black",
           },
+          headerTintColor: "black",
+          headerTransparent: true,
           headerBackground: () => (
             <BlurView
               tint="light"
@@ -54,10 +53,17 @@ const AuthNavigator = () => {
           ),
         }}
       />
-    </AuthStack.Navigator>
+      <HomeStack.Screen
+        name="Setting"
+        component={MyNavigator}
+        options={{
+          headerShown: false,
+        }}
+      />
+    </HomeStack.Navigator>
   );
 };
 
-export default AuthNavigator;
+export default HomeNavigator;
 
 const styles = StyleSheet.create({});

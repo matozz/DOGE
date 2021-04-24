@@ -5,8 +5,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AuthNavigator from "./nagivators/AuthNavigator";
-import HomeScreen from "./screens/HomeScreen";
+import HomeNavigator from "./nagivators/HomeNavigator";
 import ChatNavigator from "./nagivators/ChatNavigator";
+import ChatScreen from "./screens/ChatScreen";
+import TabNavigator from "./nagivators/TabNavigator";
+import "moment";
+import "moment/locale/zh-cn";
 
 const Stack = createStackNavigator();
 
@@ -20,7 +24,12 @@ export default function App() {
         // initialRouteName="Home"
       >
         <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="Home" component={ChatNavigator} />
+        <Stack.Screen name="Home" component={HomeNavigator} />
+        <Stack.Screen
+          name="Chats"
+          component={ChatScreen}
+          options={{ headerShown: true }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

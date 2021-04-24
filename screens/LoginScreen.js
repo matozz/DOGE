@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { KeyboardAvoidingView } from "react-native";
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+  StatusBar,
+} from "react-native";
 import { Button, Input, Image } from "react-native-elements";
 import { auth } from "../firebase";
 
@@ -20,6 +26,7 @@ const LoginScreen = ({ navigation }) => {
         .then((user) => {
           console.log(user);
           navigation.replace("Home");
+          setLoading(false);
         })
         .then(() => setLoading(false))
         .catch((error) => {
@@ -31,51 +38,82 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView behavior="padding" enabled style={styles.container}>
+      <StatusBar
+        animated={true}
+        backgroundColor="#61dafb"
+        barStyle="dark-content"
+      />
       <ActivityIndicator
         size="large"
         animating={loading}
         style={{
           position: "absolute",
-          // backgroundColor: "lightgray",
-          // width: 100,
-          // height: 100,
-          // borderRadius: 10,
+          backgroundColor: "#EEEEEE",
+          width: 100,
+          height: 100,
+          borderRadius: 10,
+          opacity: loading ? 1 : 0,
         }}
       />
-      <Image
-        style={{ width: 160, height: 160 }}
-        source={{
-          uri:
-            "https://blog.mozilla.org/internetcitizen/files/2018/08/signal-logo.png",
-        }}
-      />
+
+      <View style={{ alignItems: "center" }}>
+        <Image
+          style={{ width: 100, height: 100 }}
+          source={{
+            uri:
+              "https://media.macosicons.com/parse/files/macOSicons/549a2b756295c6c43bdac924e2c9eb33_Dingding.png",
+          }}
+        />
+        <Text
+          style={{
+            fontSize: 32,
+            marginTop: 20,
+            marginBottom: 40,
+          }}
+        >
+          叮咚
+        </Text>
+      </View>
       <View style={{ width: 300, alignItems: "center" }}>
         <Input
-          placeholder="Email"
+          placeholder="邮箱"
           type="email"
-          autoFocus
+          // autoFocus
           value={email}
+          autoCapitalize="none"
+          spellCheck={false}
           onChangeText={(text) => setEmail(text)}
           errorStyle={{ color: "red" }}
-          errorMessage={
-            email === "" && submitting ? "Please enter a valid email" : null
-          }
+          errorMessage={email === "" && submitting ? "请输入邮箱" : null}
         />
         <Input
-          placeholder="Password"
+          placeholder="密码"
           type="password"
           secureTextEntry
           value={password}
           onChangeText={(text) => setPassword(text)}
           errorStyle={{ color: "red" }}
-          errorMessage={
-            password === "" && submitting ? "Please enter password" : null
-          }
+          errorMessage={password === "" && submitting ? "请输入密码" : null}
         />
-        <Button containerStyle={styles.button} title="Login" onPress={signIn} />
         <Button
           containerStyle={styles.button}
-          title="Register"
+          buttonStyle={{
+            height: 40,
+            fontWeight: "bold",
+            backgroundColor: "#2685e4",
+          }}
+          title="登入"
+          onPress={signIn}
+        />
+        <Button
+          containerStyle={styles.button}
+          buttonStyle={{
+            height: 40,
+            fontWeight: "bold",
+            borderWidth: 1,
+            borderColor: "#2685e4",
+          }}
+          title="注册"
           type="outline"
           onPress={() => navigation.navigate("Register")}
         />
@@ -99,6 +137,6 @@ const styles = StyleSheet.create({
   },
   button: {
     width: 200,
-    marginTop: 10,
+    marginTop: 20,
   },
 });

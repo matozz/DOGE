@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState, useEffect } from "react";
 import { ScrollView } from "react-native";
-import { KeyboardAvoidingView } from "react-native";
+import { KeyboardAvoidingView, StatusBar } from "react-native";
 import { StyleSheet, View } from "react-native";
 import { Input, Button, Text } from "react-native-elements";
 import { auth } from "../firebase";
@@ -9,11 +9,11 @@ const RegisterUserScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [number, setNumber] = useState("");
+  const [photoURL, setPhotoURL] = useState("");
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerBackTitle: "Back",
+      headerBackTitle: "返回",
     });
   }, [navigation]);
 
@@ -23,7 +23,7 @@ const RegisterUserScreen = ({ navigation }) => {
       .then((authUser) => {
         authUser.user.updateProfile({
           displayName: name,
-          photoURL: `https://avatars.dicebear.com/api/bottts/${number}.svg`,
+          photoURL: photoURL,
         });
         navigation.replace("Home");
       })
@@ -32,43 +32,56 @@ const RegisterUserScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.container}>
+      <StatusBar
+        animated={true}
+        backgroundColor="#61dafb"
+        barStyle="light-content"
+      />
       <Text h3 style={{ marginBottom: 50 }}>
-        Create a Signal account
+        创建一个叮咚账号
       </Text>
       <View style={styles.inputContainer}>
         <Input
-          placeholder="Full Name"
+          placeholder="你的名字"
           autofocus
           type="text"
+          autoCapitalize="none"
           value={name}
           onChangeText={(text) => setName(text)}
         />
         <Input
-          placeholder="Email"
+          placeholder="邮箱"
           type="email"
           value={email}
           keyboardType="email-address"
           onChangeText={(text) => setEmail(text)}
+          autoCapitalize="none"
         />
         <Input
-          placeholder="Password"
+          placeholder="密码"
           type="password"
           secureTextEntry
           value={password}
           onChangeText={(text) => setPassword(text)}
         />
         <Input
-          placeholder="Lucky Number (optional)"
-          type="number"
-          value={number}
-          keyboardType="number-pad"
-          onChangeText={(text) => setNumber(text)}
+          placeholder="头像 (URL)"
+          value={photoURL}
+          onChangeText={(text) => setPhotoURL(text)}
+          spellCheck={false}
+          textContentType="URL"
+          keyboardType="url"
         />
       </View>
       <Button
         raised
         onPress={register}
-        title="Register"
+        buttonStyle={{
+          height: 40,
+          fontWeight: "bold",
+          backgroundColor: "#2685e4",
+        }}
+        title="我好了"
         style={styles.button}
       />
       <View style={{ height: 100 }} />
