@@ -35,7 +35,7 @@ const HomeScreen = ({ navigation }) => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: "叮咚",
+      title: "DOGE",
       headerStyle: { backgroundColor: "#ffffff" },
       headerTitleStyle: { color: "black" },
       headerTintColor: { color: "white" },

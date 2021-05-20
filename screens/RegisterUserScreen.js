@@ -38,7 +38,7 @@ const RegisterUserScreen = ({ navigation }) => {
         barStyle="light-content"
       />
       <Text h3 style={{ marginBottom: 50 }}>
-        创建一个叮咚账号
+        创建一个DOGE账号
       </Text>
       <View style={styles.inputContainer}>
         <Input
@@ -81,7 +81,7 @@ const RegisterUserScreen = ({ navigation }) => {
           fontWeight: "bold",
           backgroundColor: "#2685e4",
         }}
-        title="我好了"
+        title="DOGE!"
         style={styles.button}
       />
       <View style={{ height: 100 }} />

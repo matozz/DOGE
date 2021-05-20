@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { TouchableOpacity } from "react-native";
 import {
   StyleSheet,
   Text,
@@ -10,19 +9,24 @@ import {
   Keyboard,
   SafeAreaView,
   KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
+import Clipboard from "expo-clipboard";
 import { Avatar } from "react-native-elements";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { ScrollView } from "react-native";
 import { TextInput } from "react-native";
-import { TouchableWithoutFeedback } from "react-native";
-import { db, auth } from "../firebase";
-import * as firebase from "firebase";
+import { db, auth, storage } from "../firebase";
+import firebase from "firebase";
 import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import { Modalize } from "react-native-modalize";
 import ChatOptions from "../components/ChatOptions";
+import uuid from "react-native-uuid";
+import { Image } from "react-native";
+import Message from "../components/Message";
+import ActionTip from "react-native-action-tips";
 
 const ChatScreen = ({ navigation, route }) => {
   const [input, setInput] = useState("");
@@ -32,6 +36,7 @@ const ChatScreen = ({ navigation, route }) => {
   const [image, setImage] = useState(null);
   const scrollViewRef = useRef();
   const modalizeRef = useRef(null);
+  const actionTipRef = useRef(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -91,8 +96,8 @@ const ChatScreen = ({ navigation, route }) => {
             marginRight: 20,
           }}
         >
-          <TouchableOpacity>
-            <Ionicons name="call" size={24} color="white" />
+          <TouchableOpacity onPress={() => navigation.navigate("Music")}>
+            <Ionicons name="musical-notes" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity onPress={openOptions}>
             <Ionicons name="settings" size={24} color="white" />
@@ -162,9 +167,8 @@ const ChatScreen = ({ navigation, route }) => {
   useEffect(() => {
     (async () => {
       if (Platform.OS !== "web") {
-        const {
-          status,
-        } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           alert("Sorry, we need camera roll permissions to make this work!");
         }
@@ -175,26 +179,6 @@ const ChatScreen = ({ navigation, route }) => {
   const openOptions = () => {
     Keyboard.dismiss();
     modalizeRef.current?.open();
-  };
-
-  const deleteRoom = () => {
-    Alert.alert("删除房间", "本操作无法撤回", [
-      {
-        text: "确认",
-        onPress: () => {
-          setLoading(true);
-          db.collection("chats")
-            .doc(route.params.id)
-            .delete()
-            .then(() => navigation.goBack());
-        },
-        style: "destructive",
-      },
-      {
-        text: "取消",
-        style: "cancel",
-      },
-    ]);
   };
 
   const sendMessage = () => {
@@ -219,13 +203,30 @@ const ChatScreen = ({ navigation, route }) => {
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: false,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.2,
     });
 
     console.log(result);
 
     if (!result.cancelled) {
-      setImage(result.uri);
+      setImage(result);
+      await db
+        .collection("chats")
+        .doc(route.params.id)
+        .collection("messages")
+        .add({
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          picture: "",
+          duration: 0,
+          displayName: auth.currentUser.displayName,
+          email: auth.currentUser.email,
+          photoURL: auth.currentUser.photoURL,
+          type: "picture",
+        })
+        .then(function (docRef) {
+          console.log("Document written with ID: ", docRef.id);
+          uploadStorage("picture", result, docRef.id);
+        });
     }
   };
 
@@ -251,137 +252,281 @@ const ChatScreen = ({ navigation, route }) => {
   }
 
   async function stopRecording() {
+    let duration;
+    recording
+      .getStatusAsync()
+      .then((status) => (duration = status.durationMillis));
     console.log("Stopping recording..");
     setRecording(undefined);
     await recording.stopAndUnloadAsync();
     const uri = recording.getURI();
+
     console.log("Recording stopped and stored at", uri);
+
+    db.collection("chats")
+      .doc(route.params.id)
+      .collection("messages")
+      .add({
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        audio: "",
+        duration: 0,
+        displayName: auth.currentUser.displayName,
+        email: auth.currentUser.email,
+        photoURL: auth.currentUser.photoURL,
+        type: "audio",
+      })
+      .then(function (docRef) {
+        console.log("Document written with ID: ", docRef.id);
+        uploadStorage("audio", recording, docRef.id, duration);
+      });
   }
 
+  const uploadStorage = async (type, content, id, duration) => {
+    let uri;
+    if (type === "audio") uri = content.getURI();
+    if (type === "picture") uri = content.uri;
+    console.log(uri);
+    const encrypt = uuid.v4();
+    try {
+      const blob = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = () => {
+          try {
+            resolve(xhr.response);
+          } catch (error) {
+            console.log("error:", error);
+          }
+        };
+        xhr.onerror = (e) => {
+          console.log(e);
+          reject(new TypeError("Network request failed"));
+        };
+        xhr.responseType = "blob";
+        xhr.open("GET", uri, true);
+        xhr.send(null);
+      });
+      if (blob != null) {
+        const uriParts = uri.split(".");
+        const fileType = uriParts[uriParts.length - 1];
+        if (type == "audio") {
+          firebase
+            .storage()
+            .ref()
+            .child(`audio/${route.params.id}/${encrypt}.${fileType}`)
+            .put(blob, {
+              contentType: `audio/${fileType}`,
+            })
+            .then(() => {
+              console.log("Upload Success!");
+              sendAudio(
+                `audio/${route.params.id}/${encrypt}.${fileType}`,
+                duration,
+                id
+              );
+            })
+            .catch((e) => console.log("error:", e));
+        } else if (type == "picture") {
+          firebase
+            .storage()
+            .ref()
+            .child(`picture/${route.params.id}/${encrypt}.${fileType}`)
+            .put(blob, {
+              contentType: `picture/${fileType}`,
+            })
+            .then(() => {
+              console.log("Upload Success!");
+              sendPicture(
+                `picture/${route.params.id}/${encrypt}.${fileType}`,
+                id
+              );
+            })
+            .catch((e) => console.log("error:", e));
+        }
+      } else {
+        console.log("erroor with blob");
+      }
+    } catch (error) {
+      console.log("error:", error);
+    }
+  };
+
+  const sendAudio = async (path, duration, id) => {
+    const uri = await firebase.storage().ref(path).getDownloadURL();
+
+    db.collection("chats")
+      .doc(route.params.id)
+      .collection("messages")
+      .doc(id)
+      .update({
+        audio: uri,
+        duration: duration,
+      });
+
+    console.log("uri:", uri);
+  };
+
+  const sendPicture = async (path, id) => {
+    const uri = await firebase.storage().ref(path).getDownloadURL();
+
+    db.collection("chats")
+      .doc(route.params.id)
+      .collection("messages")
+      .doc(id)
+      .update({
+        picture: uri,
+        width: image.width,
+        height: image.height,
+      });
+
+    console.log("uri:", uri);
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <StatusBar style="light" />
-      <ActivityIndicator
-        size="large"
-        animating={loading}
-        style={{
-          position: "absolute",
-          top: "40%",
-          right: "50%",
-          transform: [{ translateX: "50%" }],
-          backgroundColor: "#EEEEEE",
-          width: 100,
-          height: 100,
-          borderRadius: 10,
-          opacity: loading ? 1 : 0,
-        }}
-      />
-      <Modalize ref={modalizeRef} modalHeight={400}>
+    <>
+      <Modalize ref={modalizeRef} modalHeight={300}>
         <ChatOptions roomId={route.params.id} setLoading={setLoading} />
       </Modalize>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
-        keyboardVerticalOffset={90}
-      >
-        {/* <TouchableWithoutFeedback> */}
-        <>
-          <ScrollView
-            ref={scrollViewRef}
-            contentContainerStyle={{
-              paddingTop: 15,
-            }}
-          >
-            {messages.map(({ id, data }) =>
-              data.email === auth.currentUser.email ? (
-                <View key={id} style={styles.reciever}>
-                  <Avatar
-                    position="absolute"
-                    rounded
-                    // WEB
-                    containerStyle={{
-                      position: "absolute",
-                      top: 8,
-                      right: -40,
-                    }}
-                    top={8}
-                    right={-40}
-                    size={30}
-                    source={{ uri: data.photoURL }}
-                  />
-                  <Text style={styles.recieverText}>{data.message}</Text>
-                </View>
-              ) : (
-                <View key={id} style={styles.sender}>
-                  <Avatar
-                    position="absolute"
-                    rounded
-                    // WEB
-                    containerStyle={{
-                      position: "absolute",
-                      top: 8,
-                      left: -40,
-                    }}
-                    // bottom={8}
-                    top={8}
-                    left={-40}
-                    size={30}
-                    source={{ uri: data.photoURL }}
-                  />
-                  {data.type == "text" && (
-                    <Text style={styles.senderText}>{data.message}</Text>
-                  )}
-                  {data.type == "audio" && (
-                    <View style={styles.senderText}></View>
-                  )}
+      <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+        <StatusBar style="light" />
+        <ActionTip ref={actionTipRef} position={{ top: 20 }} />
+        <ActivityIndicator
+          size="large"
+          animating={loading}
+          style={{
+            position: "absolute",
+            top: "40%",
+            right: "50%",
+            transform: [{ translateX: "50%" }],
+            backgroundColor: "#EEEEEE",
+            width: 100,
+            height: 100,
+            borderRadius: 10,
+            opacity: loading ? 1 : 0,
+          }}
+        />
 
-                  <Text numberOfLines={1} style={styles.senderName}>
-                    {data.displayName}
-                  </Text>
-                </View>
-              )
-            )}
-          </ScrollView>
-          <View style={styles.footer}>
-            <TextInput
-              placeholder="说点啥好呢?"
-              style={styles.textInput}
-              value={input}
-              onChangeText={(text) => setInput(text)}
-              onFocus={() =>
-                setTimeout(
-                  () => scrollViewRef.current.scrollToEnd({ animated: true }),
-                  100
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.container}
+          keyboardVerticalOffset={90}
+        >
+          {/* <TouchableWithoutFeedback> */}
+          <>
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={{
+                paddingTop: 15,
+              }}
+            >
+              {messages.map(({ id, data }) =>
+                data.email === auth.currentUser.email ? (
+                  <View key={id} style={styles.reciever}>
+                    <ActivityIndicator
+                      style={{ position: "absolute", top: 16, left: -30 }}
+                      animating={data.audio !== "" ? false : true}
+                    />
+                    <ActivityIndicator
+                      style={{ position: "absolute", top: 36, left: -30 }}
+                      animating={data.picture !== "" ? false : true}
+                    />
+                    <Avatar
+                      position="absolute"
+                      rounded
+                      // WEB
+                      containerStyle={{
+                        position: "absolute",
+                        top: 9,
+                        right: -40,
+                      }}
+                      top={9}
+                      right={-40}
+                      size={30}
+                      source={{ uri: data.photoURL }}
+                    />
+                    <Message
+                      roll="reciever"
+                      data={data}
+                      actionTipRef={actionTipRef}
+                    />
+                  </View>
+                ) : (
+                  <View key={id} style={styles.sender}>
+                    <ActivityIndicator
+                      style={{ position: "absolute", top: 16, right: -30 }}
+                      animating={data.audio !== "" ? false : true}
+                    />
+                    <ActivityIndicator
+                      style={{ position: "absolute", top: 36, right: -30 }}
+                      animating={data.picture !== "" ? false : true}
+                    />
+                    <Avatar
+                      position="absolute"
+                      rounded
+                      // WEB
+                      containerStyle={{
+                        position: "absolute",
+                        top: 9,
+                        left: -40,
+                      }}
+                      // bottom={8}
+                      top={9}
+                      left={-40}
+                      size={30}
+                      source={{ uri: data.photoURL }}
+                    />
+                    <Message
+                      roll="sender"
+                      data={data}
+                      actionTipRef={actionTipRef}
+                    />
+                    <Text numberOfLines={1} style={styles.senderName}>
+                      {data.displayName}
+                    </Text>
+                  </View>
                 )
-              }
-              onSubmitEditing={sendMessage}
-            />
-            <TouchableOpacity
-              activeOpacity={0.5}
-              style={{ marginRight: 12 }}
-              onPress={pickImage}
-            >
-              <Ionicons name="image" size={24} color="#2685e4" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={recording ? stopRecording : startRecording}
-              activeOpacity={0.5}
-              style={{ marginRight: 12 }}
-            >
-              <Ionicons
-                name="mic"
-                size={24}
-                color={recording ? "red" : "#2685e4"}
+              )}
+            </ScrollView>
+            <View style={styles.footer}>
+              <TextInput
+                placeholder="说点啥好呢?"
+                style={styles.textInput}
+                value={input}
+                onChangeText={(text) => setInput(text)}
+                onFocus={() =>
+                  setTimeout(
+                    () => scrollViewRef.current.scrollToEnd({ animated: true }),
+                    100
+                  )
+                }
+                onSubmitEditing={sendMessage}
               />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={sendMessage} activeOpacity={0.5}>
-              <Ionicons name="logo-twitter" size={24} color="#2685e4" />
-            </TouchableOpacity>
-          </View>
-        </>
-        {/* </TouchableWithoutFeedback> */}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              <TouchableOpacity
+                activeOpacity={0.5}
+                style={{ marginRight: 12 }}
+                onPress={pickImage}
+              >
+                <Ionicons name="image" size={24} color="#2685e4" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={recording ? stopRecording : startRecording}
+                activeOpacity={0.5}
+                style={{ marginRight: 12 }}
+              >
+                <Ionicons
+                  name="mic"
+                  size={24}
+                  color={recording ? "red" : "#2685e4"}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendMessage} activeOpacity={0.5}>
+                <Ionicons name="logo-twitter" size={24} color="#2685e4" />
+              </TouchableOpacity>
+            </View>
+          </>
+          {/* </TouchableWithoutFeedback> */}
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -415,19 +560,7 @@ const styles = StyleSheet.create({
     position: "relative",
     marginLeft: 50,
   },
-  recieverText: {
-    color: "black",
-    fontWeight: "500",
-    lineHeight: 20,
-    // marginRight: 10,
-  },
-  senderText: {
-    color: "white",
-    fontWeight: "500",
-    lineHeight: 20,
-    // marginLeft: 10,
-    // marginBottom: 10,
-  },
+
   senderName: {
     position: "absolute",
     top: -16,
@@ -453,5 +586,25 @@ const styles = StyleSheet.create({
     padding: 10,
     color: "grey",
     borderRadius: 30,
+  },
+  tooptip: {
+    padding: 12,
+    borderBottomWidth: 0.2,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderBottomColor: "#adadad",
+  },
+  tooptip2: {
+    padding: 12,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tooptip3: {
+    // padding: 12,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

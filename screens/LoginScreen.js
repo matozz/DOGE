@@ -6,8 +6,9 @@ import {
   View,
   ActivityIndicator,
   StatusBar,
+  Image,
 } from "react-native";
-import { Button, Input, Image } from "react-native-elements";
+import { Button, Input } from "react-native-elements";
 import { auth } from "../firebase";
 
 const LoginScreen = ({ navigation }) => {
@@ -58,10 +59,9 @@ const LoginScreen = ({ navigation }) => {
 
       <View style={{ alignItems: "center" }}>
         <Image
-          style={{ width: 100, height: 100 }}
+          style={{ width: 120, height: 120 }}
           source={{
-            uri:
-              "https://media.macosicons.com/parse/files/macOSicons/549a2b756295c6c43bdac924e2c9eb33_Dingding.png",
+            uri: "https://dogecoin.com/assets/img/doge.png",
           }}
         />
         <Text
@@ -69,9 +69,10 @@ const LoginScreen = ({ navigation }) => {
             fontSize: 32,
             marginTop: 20,
             marginBottom: 40,
+            fontWeight: "600",
           }}
         >
-          叮咚
+          DOGE
         </Text>
       </View>
       <View style={{ width: 300, alignItems: "center" }}>

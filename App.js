@@ -11,6 +11,7 @@ import ChatScreen from "./screens/ChatScreen";
 import TabNavigator from "./nagivators/TabNavigator";
 import "moment";
 import "moment/locale/zh-cn";
+import MusicScreen from "./screens/MusicScreen";
 
 const Stack = createStackNavigator();
 
@@ -18,6 +19,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        // initialRouteName={"Home"}
         screenOptions={{
           headerShown: false,
         }}

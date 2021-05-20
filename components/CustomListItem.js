@@ -34,7 +34,14 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
         </ListItem.Title>
         {chatMessages[0] ? (
           <ListItem.Subtitle numberOfLines={1} ellipsizeMode="tail">
-            {chatMessages?.[0]?.displayName}: {chatMessages?.[0]?.message}
+            {chatMessages?.[0]?.type == "text" &&
+              chatMessages?.[0]?.displayName +
+                ": " +
+                chatMessages?.[0]?.message}
+            {chatMessages?.[0]?.type == "audio" &&
+              chatMessages?.[0]?.displayName + ": [语音]"}
+            {chatMessages?.[0]?.type == "picture" &&
+              chatMessages?.[0]?.displayName + ": [图片]"}
           </ListItem.Subtitle>
         ) : (
           <ListItem.Subtitle

@@ -9,6 +9,7 @@ import AddChatScreen from "../screens/AddChatScreen";
 import TabNavigator from "./TabNavigator";
 import MyScreen from "../screens/MyScreen";
 import MyNavigator from "./MyNavigator";
+import AddReminderScreen from "../screens/AddReminderScreen";
 
 const HomeStack = createStackNavigator();
 
@@ -36,6 +37,26 @@ const HomeNavigator = () => {
       <HomeStack.Screen
         name="AddChat"
         component={AddChatScreen}
+        options={{
+          headerStatusBarHeight: 0,
+          headerStyle: { height: 55 },
+          headerTitleStyle: {
+            color: "black",
+          },
+          headerTintColor: "black",
+          headerTransparent: true,
+          headerBackground: () => (
+            <BlurView
+              tint="light"
+              intensity={100}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
+        }}
+      />
+      <HomeStack.Screen
+        name="AddReminder"
+        component={AddReminderScreen}
         options={{
           headerStatusBarHeight: 0,
           headerStyle: { height: 55 },
